@@ -1,17 +1,17 @@
-# GistPin Web
+# The Gist Web
 
-The web frontend for GistPin — a map-based interface for browsing and posting hyperlocal gists.
+The web frontend for Gist — a map-based interface for browsing and posting hyperlocal gists.
 
 ---
 
 ## What This Repo Does
 
-- Renders an interactive map with gist pins pulled from `gistpin-backend`
+- Renders an interactive map with gist pins pulled from `gist-backend`
 - Lets users post new gists by clicking a location on the map
 - Shows a list view of nearby gists
 - (Future) Wallet-based identity via Freighter (Stellar browser extension)
 
-This app is a **pure client** — all blockchain and IPFS logic lives in the backend. The web app only talks to `gistpin-backend` via REST.
+This app is a **pure client** — all blockchain and IPFS logic lives in the backend. The web app only talks to `gist-backend` via REST.
 
 ---
 
@@ -34,7 +34,7 @@ This app is a **pure client** — all blockchain and IPFS logic lives in the bac
 ## Project Layout
 
 ```
-gistpin-web/
+gist-web/
 ├── app/                        # Next.js App Router
 │   ├── layout.tsx              # Root layout (providers, fonts)
 │   ├── page.tsx                # Home page — mounts MapView
@@ -54,7 +54,7 @@ gistpin-web/
 │   └── ui/                     # Shared primitives (Button, Input, Modal, etc.)
 ├── lib/
 │   ├── api/
-│   │   └── client.ts           # Typed Axios instance for gistpin-backend
+│   │   └── client.ts           # Typed Axios instance for gist-backend
 │   ├── hooks/
 │   │   ├── useGists.ts         # TanStack Query hooks for gists
 │   │   └── useLocation.ts      # Browser geolocation wrapper
@@ -76,8 +76,8 @@ gistpin-web/
 ## Prerequisites
 
 - **Node.js** >= 20 — [nodejs.org](https://nodejs.org)
-- **npm** 
-- A running instance of `gistpin-backend` (see that repo's README)
+- **pnpm** (recommended) or npm/yarn
+- A running instance of `gist-backend` (see that repo's README)
 - A **Mapbox access token** — get one free at [mapbox.com](https://mapbox.com)
 
 ---
@@ -87,9 +87,9 @@ gistpin-web/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/GistPin-Org/gistpin-web.git
-cd gistpin-web
-npm install
+git clone https://github.com/gist-app/gist-web.git
+cd gist-web
+pnpm install
 ```
 
 ### 2. Environment variables
@@ -116,7 +116,7 @@ NEXT_PUBLIC_DEFAULT_ZOOM=14
 ### 3. Run the dev server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
@@ -127,7 +127,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### API client
 
-All calls to `gistpin-backend` go through `lib/api/client.ts`, which exports a typed Axios instance. **Never call `fetch` directly from components.** Keep network logic in hooks.
+All calls to `gist-backend` go through `lib/api/client.ts`, which exports a typed Axios instance. **Never call `fetch` directly from components.** Keep network logic in hooks.
 
 ```ts
 // lib/api/client.ts
@@ -198,12 +198,12 @@ export default function MapView() {
 
 | Command | Description |
 |---|---|
-| `npm dev` | Start dev server with hot reload |
-| `npm build` | Production build |
-| `npm start` | Serve production build |
-| `npm lint` | ESLint |
-| `npm type-check` | TypeScript type check without emitting |
-| `npm test` | Run Jest tests |
+| `pnpm dev` | Start dev server with hot reload |
+| `pnpm build` | Production build |
+| `pnpm start` | Serve production build |
+| `pnpm lint` | ESLint |
+| `pnpm type-check` | TypeScript type check without emitting |
+| `pnpm test` | Run Jest tests |
 
 ---
 
@@ -218,7 +218,7 @@ export default function MapView() {
 
 - Keep components small and focused on a single responsibility.
 - Use TanStack Query for all server state — no `useState` + `useEffect` for data fetching.
-- Coordinate any API response shape changes with `gistpin-backend`.
+- Coordinate any API response shape changes with `gist-backend`.
 - New components should have at least a smoke test in `__tests__/`.
 
-For global contribution rules: [gistpin-meta/CONTRIBUTING.md](https://github.com/gistpin/gistpin-meta/blob/main/CONTRIBUTING.md)
+For global contribution rules: [gist-meta/CONTRIBUTING.md](https://github.com/gist-app/gist-meta/blob/main/CONTRIBUTING.md)
