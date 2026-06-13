@@ -1,195 +1,119 @@
-# The Gist Web
+# TheGist Web
 
-The web frontend for Gist — a map-based interface for browsing and posting hyperlocal gists.
+Decentralized map interface for the TheGist protocol — post and browse anonymous hyperlocal gists in the browser.
 
----
-
-## What This Repo Does
-
-- Renders an interactive map with gist pins pulled from `gist-backend`
-- Lets users post new gists by clicking a location on the map
-- Shows a list view of nearby gists
-- (Future) Wallet-based identity via Freighter (Stellar browser extension)
-
-This app is a **pure client** — all blockchain and IPFS logic lives in the backend. The web app only talks to `gist-backend` via REST.
+No user accounts. No login. Connect your Freighter wallet and start posting.
 
 ---
 
-## Tech Stack
+## How It Works
+
+TheGist Web is a fully client-side Web3 app. There is no backend that holds your identity or mediates your posts.
+
+```
+1. Connect Freighter wallet (browser extension)
+2. Compose a gist — text or image
+3. Content is pinned to IPFS directly from the browser → CID returned
+4. Transaction (CID + geohash + author pubkey) signed by Freighter
+5. Signed transaction submitted directly to Soroban GistRegistry contract
+6. Map reads nearby gists from the GraphQL indexer (TheGist-API)
+7. Gist appears on the map for anyone nearby
+```
+
+All write operations go directly to Soroban — this app never routes your transaction through a server.
+
+---
+
+## Stack
 
 | Layer | Choice |
-|---|---|
+|-------|--------|
 | Framework | Next.js 14 (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
-| Map | Mapbox GL JS (`react-map-gl`) |
-| Data fetching | TanStack Query (React Query v5) |
-| HTTP client | Axios |
-| Forms | React Hook Form + Zod |
-| Icons | Lucide React |
-| Testing | Jest + React Testing Library |
+| Map | Mapbox GL JS |
+| Wallet | Freighter Wallet SDK |
+| Blockchain | Stellar SDK |
+| Data fetching | Apollo Client |
+| GraphQL | TheGist-API |
 
 ---
 
-## Project Layout
+## Key Features
 
-```
-gist-web/
-├── app/                        # Next.js App Router
-│   ├── layout.tsx              # Root layout (providers, fonts)
-│   ├── page.tsx                # Home page — mounts MapView
-│   ├── gists/
-│   │   └── [id]/
-│   │       └── page.tsx        # Individual gist detail page
-│   └── api/                    # Next.js route handlers (thin proxies if needed)
-├── components/
-│   ├── map/
-│   │   ├── MapView.tsx         # Main Mapbox map wrapper
-│   │   ├── GistMarker.tsx      # Individual pin on the map
-│   │   └── GistCluster.tsx     # Clustered pins for dense areas
-│   ├── gists/
-│   │   ├── GistCard.tsx        # Single gist summary card
-│   │   ├── GistList.tsx        # Scrollable list of nearby gists
-│   │   └── GistForm.tsx        # Create-gist modal / drawer
-│   └── ui/                     # Shared primitives (Button, Input, Modal, etc.)
-├── lib/
-│   ├── api/
-│   │   └── client.ts           # Typed Axios instance for gist-backend
-│   ├── hooks/
-│   │   ├── useGists.ts         # TanStack Query hooks for gists
-│   │   └── useLocation.ts      # Browser geolocation wrapper
-│   └── utils/
-│       └── geo.ts              # Small geo helpers (distance, bbox)
-├── types/
-│   └── gist.ts                 # Shared TypeScript types
-├── public/
-├── .env.local.example
-├── next.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-├── package.json
-└── README.md
-```
+- **Interactive map** — gists rendered as pins, clustered at low zoom levels
+- **Post at your location** — one click to anchor a gist to your current GPS coordinates
+- **24h expiry by default** — gists self-expire on-chain; the map stays fresh
+- **Anonymous by default** — no username required, though author Stellar address is visible on-chain to anyone who looks
+- **Freighter wallet** — sign transactions in the browser with no seed phrase exposure
+- **IPFS pinning** — gist content lives on IPFS, not on any server controlled by TheGist
 
 ---
 
-## Prerequisites
+## Local Setup
 
-- **Node.js** >= 20 — [nodejs.org](https://nodejs.org)
-- **pnpm** (recommended) or npm/yarn
-- A running instance of `gist-backend` (see that repo's README)
-- A **Mapbox access token** — get one free at [mapbox.com](https://mapbox.com)
+### 1. Install Freighter
 
----
+Download the [Freighter browser extension](https://freighter.app) and create or import a Stellar wallet. Switch to **Testnet** during development.
 
-## Local Development
-
-### 1. Clone and install
+### 2. Clone and install
 
 ```bash
-git clone https://github.com/gist-app/gist-web.git
-cd gist-web
-pnpm install
+git clone https://github.com/TheGist-Org/TheGist-web.git
+cd TheGist-web
+npm install
 ```
 
-### 2. Environment variables
+### 3. Environment variables
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-Open `.env.local` and fill in:
-
 ```env
-# Backend API base URL
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
-
-# Mapbox token (public — safe to expose in browser)
+NEXT_PUBLIC_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+NEXT_PUBLIC_CONTRACT_ID=<your_deployed_gist_registry_contract_id>
 NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1Ijoixxxxxxx...
-
-# Default map center (lon, lat) — adjust to your city
-NEXT_PUBLIC_DEFAULT_LNG=-0.1870
-NEXT_PUBLIC_DEFAULT_LAT=5.6037
-NEXT_PUBLIC_DEFAULT_ZOOM=14
+NEXT_PUBLIC_GRAPHQL_URL=http://localhost:4000/graphql
 ```
 
-### 3. Run the dev server
+Get a free Mapbox token at [mapbox.com](https://www.mapbox.com).
+
+### 4. Start the dev server
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Key Patterns
+## Project Layout
 
-### API client
-
-All calls to `gist-backend` go through `lib/api/client.ts`, which exports a typed Axios instance. **Never call `fetch` directly from components.** Keep network logic in hooks.
-
-```ts
-// lib/api/client.ts
-import axios from 'axios';
-import type { Gist, CreateGistDto, GistQueryParams, GistsResponse } from '@/types/gist';
-
-export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
-});
-
-export const gistsApi = {
-  getNearby: (params: GistQueryParams) =>
-    api.get<GistsResponse>('/gists', { params }),
-
-  create: (data: CreateGistDto) =>
-    api.post<Gist>('/gists', data),
-};
 ```
-
-### Data fetching with TanStack Query
-
-```ts
-// lib/hooks/useGists.ts
-import { useQuery } from '@tanstack/react-query';
-import { gistsApi } from '@/lib/api/client';
-
-export function useGists(lat: number, lon: number, radius = 500) {
-  return useQuery({
-    queryKey: ['gists', lat, lon, radius],
-    queryFn: () => gistsApi.getNearby({ lat, lon, radius }).then(r => r.data),
-    enabled: !!lat && !!lon,
-  });
-}
-```
-
-### Map integration
-
-`MapView.tsx` uses `react-map-gl`. On map move / zoom end, it calls `useGists` with the new center coordinates so pins update automatically.
-
-```tsx
-// components/map/MapView.tsx (simplified)
-'use client';
-import Map, { Marker } from 'react-map-gl';
-import { useGists } from '@/lib/hooks/useGists';
-
-export default function MapView() {
-  const [center, setCenter] = useState({ lat: ..., lon: ... });
-  const { data } = useGists(center.lat, center.lon);
-
-  return (
-    <Map
-      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-      onMoveEnd={(e) => setCenter({ lat: e.viewState.latitude, lon: e.viewState.longitude })}
-    >
-      {data?.data.map(gist => (
-        <Marker key={gist.gistId} latitude={gist.lat} longitude={gist.lon}>
-          <GistMarker gist={gist} />
-        </Marker>
-      ))}
-    </Map>
-  );
-}
+TheGist-web/
+├── app/                         # Next.js App Router
+│   ├── layout.tsx               # Root layout (wallet provider, Apollo)
+│   ├── page.tsx                 # Home — mounts the map
+│   └── gist/[id]/page.tsx       # Gist detail page
+├── components/
+│   ├── map/
+│   │   ├── GistMap.tsx          # Mapbox GL wrapper
+│   │   └── GistPin.tsx          # Individual map pin
+│   ├── gists/
+│   │   ├── GistCard.tsx         # Gist summary card
+│   │   └── PostGistModal.tsx    # Compose and sign a new gist
+│   └── wallet/
+│       └── ConnectButton.tsx    # Freighter connect / disconnect
+├── lib/
+│   ├── soroban.ts               # Transaction building and submission
+│   ├── ipfs.ts                  # IPFS pinning (browser)
+│   └── graphql/                 # Apollo Client setup and queries
+├── .env.local.example
+├── next.config.ts
+├── tailwind.config.ts
+└── README.md
 ```
 
 ---
@@ -197,28 +121,24 @@ export default function MapView() {
 ## Useful Scripts
 
 | Command | Description |
-|---|---|
-| `pnpm dev` | Start dev server with hot reload |
-| `pnpm build` | Production build |
-| `pnpm start` | Serve production build |
-| `pnpm lint` | ESLint |
-| `pnpm type-check` | TypeScript type check without emitting |
-| `pnpm test` | Run Jest tests |
+|---------|-------------|
+| `npm run dev` | Start dev server with hot reload |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm run type-check` | TypeScript check without emitting |
 
 ---
 
-## Environment Notes
+## Contributing
 
-- `NEXT_PUBLIC_*` variables are exposed to the browser. Never put secrets (API keys with write access, etc.) in these.
-- The Mapbox token is public by design — Mapbox restricts tokens by allowed URL in their dashboard.
+- All blockchain interactions must go through `lib/soroban.ts` — no raw SDK calls in components.
+- IPFS pinning logic lives in `lib/ipfs.ts` — do not call any centralized storage from the client.
+- Any changes to the GraphQL query shapes must be coordinated with TheGist-API.
+
+For global contribution rules, see [CONTRIBUTING.md](https://github.com/TheGist-Org/theGist-Meta/blob/main/CONTRIBUTING.md).
 
 ---
 
-## Contribution Guidelines
+## License
 
-- Keep components small and focused on a single responsibility.
-- Use TanStack Query for all server state — no `useState` + `useEffect` for data fetching.
-- Coordinate any API response shape changes with `gist-backend`.
-- New components should have at least a smoke test in `__tests__/`.
-
-For global contribution rules: [gist-meta/CONTRIBUTING.md](https://github.com/gist-app/gist-meta/blob/main/CONTRIBUTING.md)
+MIT
